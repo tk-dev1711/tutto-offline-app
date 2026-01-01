@@ -292,7 +292,7 @@ function endGame(){
             stats[p.name].count++;
 
             if(!max||p.points>max.points) max={...p,round:ri+1};
-            if(!min||p.points<min.points) min={...p,round:ri+1};
+            if(p.points>0&&(!min||p.points<min.points)) min={...p,round:ri+1};
         });
     });
 
@@ -324,3 +324,4 @@ document.getElementById("resetGame").onclick=()=>{
 </script>
 </body>
 </html>
+
