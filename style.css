@@ -1,0 +1,40 @@
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+#game {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    overflow-y: auto; /* Scroll nur innerhalb des Spiels */
+}
+
+#players {
+    margin-bottom: 10px;
+}
+
+#numpad {
+    margin-top: 10px;
+    position: sticky;
+    bottom: 80px; /* Abstand zu Buttons */
+    background: #f8f8f8;
+    padding: 5px 0;
+}
+
+#buttonsContainer {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    padding: 10px 0;
+    margin-top: 10px;
+    background: #fff;
+    /* Sticky entfernen */
+    /* position: sticky; bottom: 0; */
+    box-shadow: none;
+}

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tutto Punkte-Tracker</title>
+
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+
+<style>
+:root {
+    --bg-main: #ffe00b;       /* helles Gelb */
+    --bg-card: #fffde7;       /* leichtes Gelb für Karten */
+    --primary: #d32f2f;       /* mattes Rot für Buttons */
+    --primary-dark: #b71c1c;  /* dunkler Rot-Hover */
+    --accent: #ffd54f;        /* goldgelb für Gewinner */
+    --text-main: #b71c1c;     /* mattes Rot für Text */
+    --highlight: #fff59d;     /* helles Gelb für aktive Felder */
+}
+
+html,body{
+    margin:0;
+    padding:0;
+    font-family:Arial,sans-serif;
+    background: var(--bg-main);
+    color: var(--text-main);
+    touch-action: manipulation;
+}
+#setup,#game{padding:12px}
+button{
+    background:var(--primary);
+    color:#fff;
+    border:none;
+    border-radius:6px;
+    padding:10px 14px;
+    font-size:16px;
+    margin:4px 0;
+    cursor:pointer;
+}
+button:active{background:var(--primary-dark);}
+input{
+    font-size:16px;
+    padding:8px;
+    width:70px;
+}
+.player{
+    display:flex;
+    align-items:center;
+    margin-bottom:8px;
+}
+.player-name{min-width:110px}
+.total{
+    font-size:1.4em;
+    font-weight:bold;
+    margin-left:6px;
+    width:60px;
+}
+.playerInput{
+    margin-left:8px;
+    background:var (--bg-card);
+}
+#numpad button{
+    flex:1;
+    margin:3px;
+    font-size:1.3em;
+}
+#numpad div{display:flex}
+#history{margin-top:20px}
+.round{
+    background:var(--bg-card);
+    padding:6px;
+    border-radius:6px;
+    margin-bottom:6px;
+}
+#winnerBanner{
+    background:var(--accent);
+    padding:12px;
+    border-radius:8px;
+    margin-top:10px;
+    font-weight:bold;
+}
+.playerInput:focus{
+    background:var(--highlight);
+    outline:none;
+    border:2px solid var (--primary-dark);
+}
+</style>
+</head>
+
+<body>
+
+<div id="setup">
+    <h2>Tutto starten</h2>
+
+    <button id="quickStart">Schnellstart: Kathi & Tim</button><br><br>
+
+    <label>Spieleranzahl (2–8)</label><br>
+    <input type="number" id="playerCount" min="2" max="8" value="2"><br><br>
+
+    <div id="nameInputs"></div>
+
+    <button id="startGame">Spiel starten</button>
+</div>
+
+<div id="game" style="display:none">
+    <div id="players"></div>
+    <div id="numpad"></div>
+    <div id="winnerBanner" style="display:none"></div>
+    <div id="history"></div>
+
+    <button id="saveGame">Spiel speichern</button>
+    <button id="resetGame">Neues Spiel</button>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+
+let players=[];
+let rounds=[];
+let activeIndex=0;
+let finalRound=false;
+let finalRoundsLeft=0;
+let gameOver=false;
+
+const setup=document.getElementById("setup");
+const game=document.getElementById("game");
+const nameInputs=document.getElementById("nameInputs");
+const playerCount=document.getElementById("playerCount");
+const playersDiv=document.getElementById("players");
+const historyDiv=document.getElementById("history");
+const banner=document.getElementById("winnerBanner");
+const numpad=document.getElementById("numpad");
+
+/* ---------- SETUP ---------- */
+function updateNames(){
+    nameInputs.innerHTML="";
+    const c=Number(playerCount.value);
+    for(let i=0;i<c;i++){
+        const inp=document.createElement("input");
+        inp.placeholder=`Spieler ${i+1}`;
+        inp.style.display="block";
+        inp.style.marginBottom="6px";
+        nameInputs.appendChild(inp);
+    }
+}
+updateNames();
+playerCount.oninput=updateNames;
+
+document.getElementById("quickStart").onclick=()=>{
+    players=[{name:"Kathi",total:0},{name:"Tim",total:0}];
+    startGame();
+};
+
+document.getElementById("startGame").onclick=()=>{
+    players=[];
+    nameInputs.querySelectorAll("input").forEach((i,idx)=>{
+        players.push({name:i.value||`Spieler ${idx+1}`,total:0});
+    });
+    if(players.length<2) return;
+    startGame();
+};
+
+/* ---------- GAME ---------- */
+function startGame(){
+    setup.style.display="none";
+    game.style.display="block";
+    rounds=[];
+    activeIndex=0;
+    finalRound=false;
+    finalRoundsLeft=0;
+    gameOver=false;
+    banner.style.display="none";
+    renderPlayers();
+    renderNumpad();
+    renderHistory();
+}
+
+function renderPlayers(){
+    playersDiv.innerHTML="";
+    players.forEach((p,i)=>{
+        const d=document.createElement("div");
+        d.className="player";
+        d.innerHTML=`
+            <div class="player-name">${p.name}</div>
+            <div class="total">${p.total}</div>
+            <input class="playerInput" readonly>
+            ${i===players.length-1 ? "<button>Runde</button>" : ""}
+        `;
+        const input=d.querySelector(".playerInput");
+        input.onclick=()=>{activeIndex=i;highlight();};
+
+        const btn=d.querySelector("button");
+        if(btn) btn.onclick=finishRound;
+
+        playersDiv.appendChild(d);
+    });
+    highlight();
+}
+
+function highlight(){
+    document.querySelectorAll(".playerInput").forEach((i,idx)=>{
+        i.style.background=idx===activeIndex?"#e0ffe0":"#fff";
+    });
+}
+
+/* ---------- NUMPAD ---------- */
+function renderNumpad(){
+    numpad.innerHTML="";
+    const layout=[["1","2","3"],["4","5","6"],["7","8","9"],["-","0","⌫"]];
+    layout.forEach(r=>{
+        const row=document.createElement("div");
+        r.forEach(v=>{
+            const b=document.createElement("button");
+            b.textContent=v;
+            b.onclick=()=>pad(v);
+            row.appendChild(b);
+        });
+        numpad.appendChild(row);
+    });
+}
+
+function pad(v){
+    if(gameOver) return;
+    const inputs=document.querySelectorAll(".playerInput");
+    const inp=inputs[activeIndex];
+    if(v==="⌫") inp.value=inp.value.slice(0,-1);
+    else inp.value+=v;
+}
+
+/* ---------- RUNDEN ---------- */
+function finishRound(){
+    if(gameOver) return;
+    const inputs=[...document.querySelectorAll(".playerInput")];
+    const round=[];
+    inputs.forEach((i,idx)=>{
+        const pts=Number(i.value)||0;
+        players[idx].total+=pts;
+        round.push({name:players[idx].name,points:pts});
+        i.value="";
+    });
+    rounds.push(round);
+    renderPlayers();
+    renderHistory();
+    checkRules();
+    activeIndex=0;
+}
+
+/* ---------- HISTORIE ---------- */
+function renderHistory(){
+    historyDiv.innerHTML="<h3>Runden</h3>";
+    for(let i=rounds.length-1;i>=0;i--){
+        const d=document.createElement("div");
+        d.className="round";
+        d.innerHTML=`<strong>Runde ${i+1}</strong><br>`+
+            rounds[i].map(p=>`${p.name}: ${p.points}`).join(" | ");
+        historyDiv.appendChild(d);
+    }
+}
+
+/* ---------- REGELN ---------- */
+function checkRules(){
+    if(!finalRound){
+        const trigger=players.find(p=>p.total>=6000);
+        if(trigger){
+            finalRound=true;
+            finalRoundsLeft=players.length-1;
+            banner.style.display="block";
+            banner.textContent=`${trigger.name} hat 6000 erreicht – Nachwurf!`;
+        }
+    }else{
+        finalRoundsLeft--;
+        if(finalRoundsLeft<=0) endGame();
+    }
+}
+
+/* ---------- SPIELENDE + STATISTIK ---------- */
+function endGame(){
+    gameOver=true;
+    banner.textContent="Spiel beendet";
+
+    const ranking=[...players].sort((a,b)=>b.total-a.total);
+
+    let max=null,min=null;
+    const stats={};
+
+    rounds.forEach((round,ri)=>{
+        round.forEach(p=>{
+            if(!stats[p.name]) stats[p.name]={sum:0,count:0};
+            stats[p.name].sum+=p.points;
+            stats[p.name].count++;
+
+            if(!max||p.points>max.points) max={...p,round:ri+1};
+            if(!min||p.points<min.points) min={...p,round:ri+1};
+        });
+    });
+
+    let text="🏆 Endstand\n\n";
+    ranking.forEach((p,i)=>text+=`${i+1}. ${p.name}: ${p.total}\n`);
+
+    text+=`\n📊 Statistik\n`;
+    text+=`Höchste Eingabe: ${max.name} (${max.points}) in Runde ${max.round}\n`;
+    text+=`Niedrigste Eingabe: ${min.name} (${min.points}) in Runde ${min.round}\n\n`;
+
+    Object.keys(stats).forEach(n=>{
+        text+=`${n} Ø: ${(stats[n].sum/stats[n].count).toFixed(1)}\n`;
+    });
+
+    alert(text);
+}
+
+/* ---------- STORAGE ---------- */
+document.getElementById("saveGame").onclick=()=>{
+    localStorage.setItem("tuttoGame",JSON.stringify({players,rounds}));
+    alert("Gespeichert");
+};
+document.getElementById("resetGame").onclick=()=>{
+    localStorage.removeItem("tuttoGame");
+    location.reload();
+};
+
+});
+</script>
+</body>
+</html>
